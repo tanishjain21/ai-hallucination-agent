@@ -1,0 +1,9 @@
+entrypoint: >
+  sh -c "uvicorn server:app --host 0.0.0.0 --port 7860 &
+         sleep 5 &&
+         python inference.py"
+
+env:
+  API_BASE_URL: https://api.groq.com/openai/v1
+  MODEL_NAME: llama-3.3-70b-versatile
+  HF_TOKEN: ${HF_TOKEN}

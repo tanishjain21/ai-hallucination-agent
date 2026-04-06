@@ -1,0 +1,5 @@
+.env
+validate-submission.sh
+__pycache__/
+.vscode/
+*.pyc
