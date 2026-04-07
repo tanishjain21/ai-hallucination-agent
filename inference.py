@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-load_dotenv(dotenv_path=".env", override=True)
+load_dotenv()
 
 BASE_URL = "http://127.0.0.1:7860"
 
