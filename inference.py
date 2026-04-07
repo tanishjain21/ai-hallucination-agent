@@ -7,10 +7,12 @@ load_dotenv()
 
 BASE_URL = "http://127.0.0.1:7860"
 
-# ✅ Match exactly how the hackathon sample does it
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
+API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME") or "llama-3.3-70b-versatile"
+
+print(f"[DEBUG] API_BASE_URL={API_BASE_URL}", flush=True)
+print(f"[DEBUG] API_KEY_SET={'yes' if API_KEY else 'NO - MISSING'}", flush=True)
 
 client = OpenAI(
     base_url=API_BASE_URL,
@@ -131,7 +133,6 @@ def run_episode():
             reward = step_data.get("reward", 0.0)
             done = step_data.get("done", True)
 
-            # Normalize reward from [-1, 1] to [0, 1] for score
             normalized_reward = (reward + 1.0) / 2.0
             rewards.append(normalized_reward)
             steps_taken = step_num
