@@ -9,7 +9,7 @@ BASE_URL = "http://127.0.0.1:7860"
 
 client = OpenAI(
     base_url=os.getenv("API_BASE_URL"),
-    api_key=os.getenv("HF_TOKEN")
+    api_key=os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 )
 
 TASK_NAME = "hallucination-detection"
