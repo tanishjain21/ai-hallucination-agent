@@ -103,19 +103,19 @@ def step(action: str, llm_response: str):
         status = "wrong"
 
     if status == "correct" and action == "approve_response":
-        reward = 1.0
+        reward = 0.9
     elif status == "correct" and action == "flag_hallucination":
-        reward = -0.5
+        reward = -0.4
     elif status == "partial" and action == "approve_response":
         reward = 0.5
     elif status == "wrong" and action == "flag_hallucination":
-        reward = 1.0
+        reward = 0.9
     elif status == "wrong" and action == "approve_response":
-        reward = -1.0
+        reward = -0.9
     else:
         reward = -0.2
 
-    reward = max(-1.0, min(1.0, reward))
+    reward = max(-0.99, min(0.99, reward))
     done = step_count >= max_steps or status == "correct"
 
     return {
