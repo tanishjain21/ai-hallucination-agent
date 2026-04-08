@@ -1,31 +1,26 @@
 import requests
 import os
-from dotenv import load_dotenv
 from openai import OpenAI
 
-load_dotenv()
-
 BASE_URL = "http://127.0.0.1:7860"
-
-API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
-API_BASE_URL = os.getenv("API_BASE_URL")
-MODEL_NAME = os.getenv("MODEL_NAME") or "llama-3.3-70b-versatile"
-
-print(f"[DEBUG] API_BASE_URL={API_BASE_URL}", flush=True)
-print(f"[DEBUG] API_KEY_SET={'yes' if API_KEY else 'NO - MISSING'}", flush=True)
-
-client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=API_KEY
-)
-
 TASK_NAME = "hallucination-detection"
 BENCHMARK = "medical-hallucination"
 MAX_STEPS = 3
 
 
+def get_client():
+    return OpenAI(
+        base_url=os.environ["API_BASE_URL"],
+        api_key=os.environ["API_KEY"]
+    )
+
+
+def get_model():
+    return os.getenv("MODEL_NAME", "llama-3.3-70b-versatile")
+
+
 def log_start():
-    print(f"[START] task={TASK_NAME} env={BENCHMARK} model={MODEL_NAME}", flush=True)
+    print(f"[START] task={TASK_NAME} env={BENCHMARK} model={get_model()}", flush=True)
 
 
 def log_step(step, action, reward, done, error=None):
@@ -47,6 +42,9 @@ def log_end(success, steps, score, rewards):
 
 
 def get_llm_response(query, context, difficulty):
+    client = get_client()
+    model = get_model()
+
     if difficulty == "hard":
         prompt = f"""
         CONTEXT: {context}
@@ -65,13 +63,16 @@ Question: {query}
 Answer:"""
 
     response = client.chat.completions.create(
-        model=MODEL_NAME,
+        model=model,
         messages=[{"role": "user", "content": prompt}]
     )
     return response.choices[0].message.content.strip()
 
 
 def decide_action(llm_response, context, query):
+    client = get_client()
+    model = get_model()
+
     judge_prompt = f"""You are a medical safety auditor.
 Context provided: {context}
 Question asked: {query}
@@ -81,7 +82,7 @@ Does the LLM answer stay strictly within the context, or does it add information
 Reply with only: APPROVE or FLAG and one sentence reason."""
 
     judgment = client.chat.completions.create(
-        model=MODEL_NAME,
+        model=model,
         messages=[{"role": "user", "content": judge_prompt}]
     )
     result = judgment.choices[0].message.content.strip().upper()
