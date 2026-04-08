@@ -7,8 +7,8 @@ TASK_NAME = "hallucination-detection"
 BENCHMARK = "medical-hallucination"
 MAX_STEPS = 3
 
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+API_BASE_URL = os.environ["API_BASE_URL"]
+API_KEY = os.environ["API_KEY"]
 MODEL_NAME = os.getenv("MODEL_NAME") or "llama-3.3-70b-versatile"
 
 client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
@@ -81,7 +81,7 @@ Reply with only: APPROVE or FLAG and one sentence reason."""
 def run_episode():
     rewards = []
     steps_taken = 0
-    score = 0.5  # ✅ default is 0.5 not 0.0
+    score = 0.5
     success = False
 
     log_start()
@@ -112,15 +112,15 @@ def run_episode():
                     }
                 )
                 if res.status_code != 200:
-                    log_step(step_num, action, 0.01, True, f"HTTP_{res.status_code}")  # ✅ 0.01 not 0.0
+                    log_step(step_num, action, 0.01, True, f"HTTP_{res.status_code}")
                     break
 
                 step_data = res.json()
             except Exception as e:
-                log_step(step_num, action, 0.01, True, str(e)[:50])  # ✅ 0.01 not 0.0
+                log_step(step_num, action, 0.01, True, str(e)[:50])
                 break
 
-            reward = step_data.get("reward", 0.01)  # ✅ 0.01 not 0.0
+            reward = step_data.get("reward", 0.01)
             done = step_data.get("done", True)
 
             normalized_reward = (reward + 1.0) / 2.0
@@ -132,11 +132,11 @@ def run_episode():
         if rewards:
             score = sum(rewards) / len(rewards)
 
-        score = min(max(score, 0.01), 0.99)  # ✅ always runs, never 0.0 or 1.0
+        score = min(max(score, 0.01), 0.99)
         success = score >= 0.5
 
     except Exception as e:
-        log_step(steps_taken + 1, "error", 0.01, True, str(e)[:50])  # ✅ 0.01 not 0.0
+        log_step(steps_taken + 1, "error", 0.01, True, str(e)[:50])
 
     finally:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
