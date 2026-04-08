@@ -142,7 +142,7 @@ def run_episode():
 
         if rewards:
             score = sum(rewards) / len(rewards)
-            score = min(max(score, 0.0), 1.0)
+            score = min(max(score, 0.01), 0.99)  # ✅ strictly between 0 and 1
 
         success = score >= 0.5
 
