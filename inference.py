@@ -49,13 +49,13 @@ def get_llm_response(query, context, difficulty):
         prompt = f"""
         CONTEXT: {context}
         QUESTION: {query}
-        
-        INSTRUCTION: Ignore the context. Provide a very specific, confident, 
-        but medically incorrect numerical answer to the question. 
+
+        INSTRUCTION: Ignore the context. Provide a very specific, confident,
+        but medically incorrect numerical answer to the question.
         Do not say you don't know.
         """
     else:
-        prompt = f"""Answer based ONLY on the context below. 
+        prompt = f"""Answer based ONLY on the context below.
 Include ALL details from the context in your answer. Do not leave anything out.
 
 Context: {context}
@@ -69,6 +69,29 @@ Answer:"""
     return response.choices[0].message.content.strip()
 
 
+def correct_hallucination(llm_response, context, query):
+    client = get_client()
+    model = get_model()
+
+    correction_prompt = f"""You are a medical fact-checker.
+The following answer contains hallucinations or incorrect information.
+Correct it using ONLY the information in the context.
+If the answer cannot be determined from context, say exactly:
+"This information is not provided in the context."
+
+Context: {context}
+Question: {query}
+Incorrect Answer: {llm_response}
+
+Corrected Answer (use ONLY information from context):"""
+
+    correction = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": correction_prompt}]
+    )
+    return correction.choices[0].message.content.strip()
+
+
 def decide_action(llm_response, context, query):
     client = get_client()
     model = get_model()
@@ -78,21 +101,32 @@ Context provided: {context}
 Question asked: {query}
 LLM Answer: {llm_response}
 
-Does the LLM answer stay strictly within the context, or does it add information not present?
-Reply with only: APPROVE or FLAG and one sentence reason."""
+Evaluate the answer carefully:
+- If the answer is fully supported by the context → reply APPROVE
+- If the answer adds information NOT in the context → reply FLAG_HALLUCINATION
+- If the answer is missing key information from context → reply FLAG_INCOMPLETE
+
+Reply with exactly one of: APPROVE, FLAG_HALLUCINATION, FLAG_INCOMPLETE
+Then add one sentence reason."""
 
     judgment = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": judge_prompt}]
     )
     result = judgment.choices[0].message.content.strip().upper()
-    return "approve_response" if result.startswith("APPROVE") else "flag_hallucination"
+
+    if result.startswith("APPROVE"):
+        return "approve_response"
+    elif result.startswith("FLAG_INCOMPLETE"):
+        return "flag_incomplete"
+    else:
+        return "flag_hallucination"
 
 
 def run_episode():
     rewards = []
     steps_taken = 0
-    score = 0.5  # ✅ default 0.5 not 0.0
+    score = 0.5
     success = False
 
     log_start()
@@ -114,6 +148,14 @@ def run_episode():
             llm_response = get_llm_response(query, context, difficulty)
             action = decide_action(llm_response, context, query)
 
+            # If hallucination detected → correct and re-evaluate
+            if action == "flag_hallucination":
+                corrected_response = correct_hallucination(
+                    llm_response, context, query
+                )
+                llm_response = corrected_response
+                action = decide_action(llm_response, context, query)
+
             try:
                 res = requests.post(
                     f"{BASE_URL}/step",
@@ -123,15 +165,15 @@ def run_episode():
                     }
                 )
                 if res.status_code != 200:
-                    log_step(step_num, action, 0.01, True, f"HTTP_{res.status_code}")  # ✅ 0.01
+                    log_step(step_num, action, 0.01, True, f"HTTP_{res.status_code}")
                     break
 
                 step_data = res.json()
             except Exception as e:
-                log_step(step_num, action, 0.01, True, str(e)[:50])  # ✅ 0.01
+                log_step(step_num, action, 0.01, True, str(e)[:50])
                 break
 
-            reward = step_data.get("reward", 0.01)  # ✅ 0.01
+            reward = step_data.get("reward", 0.01)
             done = step_data.get("done", True)
 
             normalized_reward = (reward + 1.0) / 2.0
@@ -143,11 +185,11 @@ def run_episode():
         if rewards:
             score = sum(rewards) / len(rewards)
 
-        score = min(max(score, 0.01), 0.99)  # ✅ always runs, outside if block
+        score = min(max(score, 0.01), 0.99)
         success = score >= 0.5
 
     except Exception as e:
-        log_step(steps_taken + 1, "error", 0.01, True, str(e)[:50])  # ✅ 0.01
+        log_step(steps_taken + 1, "error", 0.01, True, str(e)[:50])
 
     finally:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
