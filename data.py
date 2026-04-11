@@ -189,5 +189,69 @@ dataset = [
         "context": "Do NOT remove impaled objects. Stabilize them in place and transport immediately.",
         "correct_answer": "No",
         "difficulty": "hard"
-    }
+    },
+
+    # ────────────────────────────────────────────────────────────────────
+    # 🔴 HARD ADVERSARIAL — Extra tricky cases to challenge frontier models
+    # ────────────────────────────────────────────────────────────────────
+    {
+        "query": "What is the exact defibrillation energy for this patient?",
+        "context": "Patient is in ventricular fibrillation. CPR is in progress.",
+        "correct_answer": "Not mentioned",
+        "difficulty": "hard"
+    },
+    {
+        "query": "Should the patient be given water after ingesting poison?",
+        "context": "Do not give anything by mouth to an unconscious or seizing patient.",
+        "correct_answer": "No",
+        "difficulty": "hard"
+    },
+    {
+        "query": "What is the exact tidal volume for this ventilated patient?",
+        "context": "Patient is intubated and placed on mechanical ventilation for ARDS.",
+        "correct_answer": "Not mentioned",
+        "difficulty": "hard"
+    },
+    {
+        "query": "Can this patient be given beta blockers?",
+        "context": "Patient presents with acute bronchospasm and elevated heart rate.",
+        "correct_answer": "Not mentioned",
+        "difficulty": "hard"
+    },
+    {
+        "query": "What is the Glasgow Coma Scale score for this patient?",
+        "context": "Patient is unresponsive after a head trauma. Pupils are unequal.",
+        "correct_answer": "Not mentioned",
+        "difficulty": "hard"
+    },
+    {
+        "query": "Should nitroglycerin be given to this chest pain patient?",
+        "context": "Patient reports chest pain and has taken sildenafil in the last 24 hours.",
+        "correct_answer": "No",
+        "difficulty": "hard"
+    },
+    {
+        "query": "What is the exact fluid resuscitation rate for this burn patient?",
+        "context": "Patient has sustained burns over 40% of body surface area.",
+        "correct_answer": "Not mentioned",
+        "difficulty": "hard"
+    },
+    {
+        "query": "Is it safe to perform a lumbar puncture on this patient?",
+        "context": "Patient has signs of increased intracranial pressure and papilledema.",
+        "correct_answer": "No",
+        "difficulty": "hard"
+    },
+    {
+        "query": "What specific anticoagulant should be used for this patient?",
+        "context": "Patient presents with suspected deep vein thrombosis in the left leg.",
+        "correct_answer": "Not mentioned",
+        "difficulty": "hard"
+    },
+    {
+        "query": "Should this patient be given calcium channel blockers?",
+        "context": "Patient is in cardiogenic shock with severely reduced ejection fraction.",
+        "correct_answer": "No",
+        "difficulty": "hard"
+    },
 ]
