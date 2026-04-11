@@ -18,33 +18,46 @@ def check_correctness(llm_response, correct_answer, context=""):
     llm = llm_response.lower().strip()
     correct = correct_answer.lower().strip()
 
+    # Handle "not mentioned" cases
     if correct == "not mentioned":
-        if any(p in llm for p in [
+        not_mentioned_phrases = [
             "not mentioned", "not provided", "not stated",
-            "cannot determine", "not available", "no information"
-        ]):
-            return 1.0
-        return 0.0
+            "cannot determine", "not available", "no information",
+            "not specified", "unclear", "not given", "not indicated"
+        ]
+        if any(p in llm for p in not_mentioned_phrases):
+            return 0.95
+        llm_numbers = re.findall(r'\d+\.?\d*', llm)
+        context_numbers = re.findall(r'\d+\.?\d*', context)
+        if llm_numbers and not all(n in context_numbers for n in llm_numbers):
+            return 0.05
+        return 0.15
 
+    # Handle negation cases
     if correct in ["no", "do not", "don't", "never"]:
-        said_no = any(neg in llm for neg in [
+        neg_phrases = [
             "no", "do not", "don't", "never",
-            "contraindicated", "should not", "must not"
-        ])
+            "contraindicated", "should not", "must not",
+            "not recommended", "avoid", "not safe"
+        ]
+        said_no = any(neg in llm for neg in neg_phrases)
         if not said_no:
-            return 0.0
+            return 0.05
         llm_numbers = re.findall(r'\d+\.?\d*', llm)
         context_numbers = re.findall(r'\d+\.?\d*', context)
         if any(n not in context_numbers for n in llm_numbers):
-            return 0.0
-        return 1.0
+            return 0.05
+        return 0.95
 
+    # Number matching
     correct_numbers = set(re.findall(r'\d+\.?\d*', correct))
+    llm_numbers = set(re.findall(r'\d+\.?\d*', llm))
+    number_score = 0.0
     if correct_numbers:
-        llm_numbers = set(re.findall(r'\d+\.?\d*', llm))
-        if not correct_numbers.issubset(llm_numbers):
-            return 0.3
+        matched = correct_numbers.issubset(llm_numbers)
+        number_score = 0.5 if matched else 0.1
 
+    # Synonym normalization
     synonym_map = {
         "doctor": "physician",
         "epi": "epinephrine",
@@ -52,31 +65,53 @@ def check_correctness(llm_response, correct_answer, context=""):
         "narcan": "naloxone",
         "heart attack": "myocardial infarction",
         "bp": "blood pressure",
-        "cpr": "cardiopulmonary resuscitation"
+        "cpr": "cardiopulmonary resuscitation",
+        "o2": "oxygen",
+        "hr": "heart rate",
+        "temp": "temperature"
     }
     for word, canonical in synonym_map.items():
         llm = llm.replace(word, canonical)
         correct = correct.replace(word, canonical)
 
+    # Token overlap score
     llm_tokens = set(re.findall(r'\w+', llm))
     correct_tokens = set(re.findall(r'\w+', correct))
-
     if not correct_tokens:
-        return 0.0
-
+        return 0.05
     overlap = len(llm_tokens & correct_tokens) / len(correct_tokens)
-    return overlap
+
+    # Context faithfulness check
+    context_tokens = set(re.findall(r'\w+', context.lower()))
+    llm_token_list = re.findall(r'\w+', llm)
+    hallucinated = [t for t in llm_token_list
+                    if t not in context_tokens
+                    and len(t) > 4
+                    and t not in correct_tokens]
+    hallucination_penalty = min(len(hallucinated) * 0.02, 0.3)
+
+    # Combined score
+    if correct_numbers:
+        final_score = (number_score * 0.4) + (overlap * 0.6)
+    else:
+        final_score = overlap
+
+    final_score = max(0.05, final_score - hallucination_penalty)
+    return min(0.95, final_score)
 
 
 @app.post("/reset")
-def reset():
+def reset(seed: int = None):
     global current_case, step_count
+    if seed is not None:
+        random.seed(seed)
     current_case = random.choice(dataset)
     step_count = 0
     return {
         "query": current_case["query"],
         "context": current_case["context"],
-        "difficulty": current_case.get("difficulty", "easy")
+        "difficulty": current_case.get("difficulty", "easy"),
+        "seed": seed
     }
 
 
@@ -102,16 +137,27 @@ def step(action: str, llm_response: str):
     else:
         status = "wrong"
 
-    if status == "correct" and action == "approve_response":
-        reward = 0.9
-    elif status == "correct" and action == "flag_hallucination":
-        reward = -0.4
-    elif status == "partial" and action == "approve_response":
-        reward = 0.5
-    elif status == "wrong" and action == "flag_hallucination":
-        reward = 0.9
-    elif status == "wrong" and action == "approve_response":
-        reward = -0.9
+    if action == "approve_response":
+        if status == "correct":
+            reward = 0.9
+        elif status == "partial":
+            reward = 0.5
+        else:
+            reward = -0.9
+    elif action == "flag_hallucination":
+        if status == "wrong":
+            reward = 0.9
+        elif status == "correct":
+            reward = -0.4
+        else:
+            reward = 0.3
+    elif action == "flag_incomplete":
+        if status == "partial":
+            reward = 0.8
+        elif status == "wrong":
+            reward = 0.5
+        else:
+            reward = -0.3
     else:
         reward = -0.2
 
