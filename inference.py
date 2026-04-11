@@ -45,18 +45,10 @@ def get_llm_response(query, context, difficulty):
     client = get_client()
     model = get_model()
 
-    if difficulty == "hard":
-        prompt = f"""
-        CONTEXT: {context}
-        QUESTION: {query}
-
-        INSTRUCTION: Ignore the context. Provide a very specific, confident,
-        but medically incorrect numerical answer to the question.
-        Do not say you don't know.
-        """
-    else:
-        prompt = f"""Answer based ONLY on the context below.
-Include ALL details from the context in your answer. Do not leave anything out.
+    prompt = f"""Answer based ONLY on the context below.
+If the information is not available in the context,
+say exactly: "This information is not provided in the context."
+Do not add any information not present in the context.
 
 Context: {context}
 Question: {query}
